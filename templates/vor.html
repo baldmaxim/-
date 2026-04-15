@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block page_title %}ЖК Холодов — Кладка{% endblock %}
+{% block page_sub %}Ведомость объёмов работ и расценка материалов{% endblock %}
+
+{% block topbar_actions %}
+  <form method="POST" action="{{ url_for('vor_upload') }}" enctype="multipart/form-data" style="display:inline">
+    <label class="btn btn-outline" style="cursor:pointer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Загрузить ВОР
+      <input type="file" name="file" accept=".xlsx,.xls" style="display:none"
+             onchange="this.form.submit()">
+    </label>
+  </form>
+  <a href="{{ url_for('export') }}" class="btn btn-success">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Скачать Excel
+  </a>
+{% endblock %}
+
+{% block content %}
+
+{% if not items %}
+<div class="empty-state">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+  </svg>
+  <p>ВОР не загружен</p>
+  <p class="empty-sub">Нажмите «Загрузить ВОР» чтобы добавить файл Excel</p>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Позиции ВОР</h2>
+    <span class="badge">{{ items|length }} позиций</span>
+  </div>
+
+  <table class="table" id="vor-table">
+    <thead>
+      <tr>
+        <th style="width:50px">№</th>
+        <th>Наименование по ВОР</th>
+        <th style="width:80px">Ед.изм</th>
+        <th style="width:90px">Кол-во</th>
+        <th style="width:220px">Материал (привязать)</th>
+        <th style="width:130px">Цена за ед., ₽</th>
+        <th style="width:140px">Итого, ₽</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr data-num="{{ item.num }}">
+        <td class="text-center">{{ item.num }}</td>
+        <td>{{ item.naimenovanie }}</td>
+        <td class="text-center">{{ item.ed_izm }}</td>
+        <td class="text-center">{{ item.kolvo|int }}</td>
+        <td>
+          <select class="select-material form-select"
+                  data-num="{{ item.num }}"
+                  onchange="bindMaterial(this)">
+            <option value="">— выбрать —</option>
+            {% for s in spravochnik %}
+            <option value="{{ s.nomenclatura }}"
+              {% if item.material == s.nomenclatura %}selected{% endif %}>
+              {{ s.nomenclatura }}
+            </option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="text-right cena-cell" id="cena-{{ item.num }}">
+          {% if item.cena %}{{ '{:,.0f}'.format(item.cena).replace(',', ' ') }}{% else %}—{% endif %}
+        </td>
+        <td class="text-right itogo-cell" id="itogo-{{ item.num }}">
+          {% if item.itogo %}
+            <strong>{{ '{:,.0f}'.format(item.itogo).replace(',', ' ') }}</strong>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="6" class="text-right"><strong>ИТОГО по разделу:</strong></td>
+        <td class="text-right" id="grand-total">
+          <strong>{{ '{:,.0f}'.format(total).replace(',', ' ') }} ₽</strong>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+{% endif %}
+
+<div id="toast" class="toast" style="display:none"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const spravochnik = {{ spravochnik | tojson }};
+
+function bindMaterial(select) {
+  const num = select.dataset.num;
+  const material = select.value;
+
+  fetch('/vor/mapping', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({num: num, material: material})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('cena-' + num).innerHTML =
+        data.cena ? data.cena_fmt : '—';
+      document.getElementById('itogo-' + num).innerHTML =
+        data.itogo ? '<strong>' + data.itogo_fmt + '</strong>' : '—';
+      updateTotal();
+      showToast('Материал привязан: ' + material);
+    }
+  });
+}
+
+function updateTotal() {
+  fetch(window.location.href)
+    .then(r => r.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newTotal = doc.getElementById('grand-total');
+      if (newTotal) document.getElementById('grand-total').innerHTML = newTotal.innerHTML;
+    });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+</script>
+{% endblock %}

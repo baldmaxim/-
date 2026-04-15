@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Коммерческие предложения{% endblock %}
+{% block page_sub %}Справочник цен на материалы{% endblock %}
+
+{% block topbar_actions %}
+  <form method="POST" action="{{ url_for('spravochnik_upload') }}" enctype="multipart/form-data" style="display:inline">
+    <label class="btn btn-outline" style="cursor:pointer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Загрузить Excel
+      <input type="file" name="file" accept=".xlsx,.xls" style="display:none"
+             onchange="this.form.submit()">
+    </label>
+  </form>
+{% endblock %}
+
+{% block content %}
+
+{% if not items %}
+<div class="empty-state">
+  <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+  </svg>
+  <p>Справочник пуст</p>
+  <p class="empty-sub">Загрузите Excel-файл с ценами на материалы</p>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Материалы и цены</h2>
+    <span class="badge">{{ items|length }} позиций</span>
+  </div>
+
+  {% if session.role == 'pricing' %}
+  <div class="role-notice">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+    Вы можете редактировать цены — нажмите на значение в столбце «Цена»
+  </div>
+  {% endif %}
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Номенклатура</th>
+        <th style="width:90px">Ед.изм</th>
+        <th style="width:150px">Цена</th>
+        <th style="width:80px">Валюта</th>
+        <th style="width:120px">Дата</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.nomenclatura }}</td>
+        <td class="text-center">{{ item.ed_izm }}</td>
+        <td class="text-right">
+          {% if session.role == 'pricing' %}
+          <span class="editable-price"
+                data-nomenclatura="{{ item.nomenclatura }}"
+                data-value="{{ item.cena }}"
+                onclick="editPrice(this)">
+            {{ '{:,.0f}'.format(item.cena).replace(',', ' ') }} ₽
+          </span>
+          {% else %}
+            {{ '{:,.0f}'.format(item.cena).replace(',', ' ') }} ₽
+          {% endif %}
+        </td>
+        <td class="text-center">{{ item.valuta }}</td>
+        <td class="text-center date-cell-{{ loop.index }}" id="date-{{ item.nomenclatura|replace(' ', '_') }}">
+          {{ item.data }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="info-banner">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+  Формат загружаемого Excel: столбцы A=Номенклатура, B=Ед.изм, C=Цена, D=Валюта, E=Дата. Данные с 2-й строки.
+</div>
+
+{% endif %}
+
+<div id="toast" class="toast" style="display:none"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+{% if session.role == 'pricing' %}
+function editPrice(el) {
+  const nom = el.dataset.nomenclatura;
+  const current = el.dataset.value;
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = current;
+  input.className = 'price-input';
+  input.style.cssText = 'width:110px;padding:4px 8px;background:#1e3a5f;border:1px solid #4ade80;color:#f0f6ff;border-radius:6px;font-size:14px;';
+
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  function save() {
+    const newVal = parseFloat(input.value);
+    if (isNaN(newVal) || newVal <= 0) { input.focus(); return; }
+
+    fetch('/spravochnik/update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({nomenclatura: nom, cena: newVal})
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const span = document.createElement('span');
+        span.className = 'editable-price';
+        span.dataset.nomenclatura = nom;
+        span.dataset.value = newVal;
+        span.onclick = function() { editPrice(this); };
+        span.textContent = newVal.toLocaleString('ru-RU') + ' ₽';
+        input.replaceWith(span);
+
+        const dateKey = nom.replace(/ /g, '_');
+        const dateEl = document.getElementById('date-' + dateKey);
+        if (dateEl) dateEl.textContent = data.data;
+
+        showToast('Цена обновлена: ' + nom);
+      }
+    });
+  }
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+}
+{% endif %}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+</script>
+{% endblock %}

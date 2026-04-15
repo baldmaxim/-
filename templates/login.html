@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Кладка Хаб — Вход</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+
+  <div class="login-container">
+    <div class="login-logo">
+      <svg width="52" height="52" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2"  y="2"  width="15" height="8" rx="1.5" fill="#f59e0b"/>
+        <rect x="19" y="2"  width="15" height="8" rx="1.5" fill="#f59e0b"/>
+        <rect x="2"  y="12" width="9"  height="8" rx="1.5" fill="#d97706"/>
+        <rect x="13" y="12" width="11" height="8" rx="1.5" fill="#d97706"/>
+        <rect x="26" y="12" width="8"  height="8" rx="1.5" fill="#d97706"/>
+        <rect x="2"  y="22" width="15" height="8" rx="1.5" fill="#f59e0b"/>
+        <rect x="19" y="22" width="15" height="8" rx="1.5" fill="#f59e0b"/>
+      </svg>
+      <h1 class="login-title">КЛАДКА ХАБ</h1>
+      <p class="login-subtitle">Система расценки тендеров</p>
+    </div>
+
+    <div class="login-card">
+      <h2 class="login-card-title">Вход в систему</h2>
+
+      {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+          <label class="form-label">Логин</label>
+          <input type="text" name="username" class="form-input"
+                 placeholder="Введите логин" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Пароль</label>
+          <input type="password" name="password" class="form-input"
+                 placeholder="Введите пароль" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Войти</button>
+      </form>
+    </div>
+
+    <p class="login-footer">Тендерный отдел © 2026</p>
+  </div>
+
+</body>
+</html>
