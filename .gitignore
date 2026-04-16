@@ -1,10 +1,16 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
 
-# Данные (генерируются через create_data.py)
-data/
+# Excel — для людей, не для git
+data/*.xlsx
+data/_tmp_*.xlsx
+
+# JSON — для данных, ВКЛЮЧАЕМ в git (версионирование)
+# data/*.json  ← НЕ игнорируем, они должны быть в git
+
+# MD — для ИИ, ВКЛЮЧАЕМ в git (база знаний)
+# *.md  ← НЕ игнорируем
 
 # Логи
 *.log

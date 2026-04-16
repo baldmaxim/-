@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "section": "Кладка",
+    "updated_at": "16.04.2026",
+    "updated_by": "system"
+  },
+  "items": [
+    {
+      "nomenclatura": "Кирпич 120 мм",
+      "ed_izm": "м2",
+      "cena": 1200,
+      "valuta": "RUB",
+      "data": "16.04.2026"
+    },
+    {
+      "nomenclatura": "Кирпич 250 мм",
+      "ed_izm": "м2",
+      "cena": 1800,
+      "valuta": "RUB",
+      "data": "16.04.2026"
+    },
+    {
+      "nomenclatura": "СКЦ 80 мм",
+      "ed_izm": "м2",
+      "cena": 900,
+      "valuta": "RUB",
+      "data": "16.04.2026"
+    }
+  ]
+}

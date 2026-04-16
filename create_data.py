@@ -1,69 +1,62 @@
 """
-Запустите этот файл один раз — он создаст тестовые Excel-файлы:
-  - data/spravochnik.xlsx  (справочник цен — 3 материала)
-  - data/vor_kholodov.xlsx (ВОР ЖК Холодов — 3 позиции)
+Запустите один раз — создаёт начальные JSON файлы данных.
+
+Архитектура хранения:
+  Excel  — для людей (загрузка/выгрузка)
+  JSON   — для данных (внутреннее хранение, git-версионирование)
+  MD     — для ИИ (база знаний, контекст)
 """
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+import json
 import os
+from datetime import datetime
 
 os.makedirs('data', exist_ok=True)
 
-# ── Справочник цен ─────────────────────────────────────────────────────────────
-wb1 = Workbook()
-ws1 = wb1.active
-ws1.title = 'Справочник'
+today = datetime.now().strftime('%d.%m.%Y')
 
-headers = ['Номенклатура', 'Ед.изм', 'Цена', 'Валюта', 'Дата']
-ws1.append(headers)
-for cell in ws1[1]:
-    cell.font = Font(bold=True, color='FFFFFF')
-    cell.fill = PatternFill(fill_type='solid', fgColor='2d6a4f')
-    cell.alignment = Alignment(horizontal='center')
+# ── Справочник цен → spravochnik.json ─────────────────────────────────────────
+spravochnik = {
+    "meta": {
+        "section": "Кладка",
+        "updated_at": today,
+        "updated_by": "system"
+    },
+    "items": [
+        {"nomenclatura": "Кирпич 120 мм",  "ed_izm": "м2", "cena": 1200, "valuta": "RUB", "data": today},
+        {"nomenclatura": "Кирпич 250 мм",  "ed_izm": "м2", "cena": 1800, "valuta": "RUB", "data": today},
+        {"nomenclatura": "СКЦ 80 мм",      "ed_izm": "м2", "cena":  900, "valuta": "RUB", "data": today}
+    ]
+}
 
-materials = [
-    ['Кирпич 120 мм',  'м2', 1200, 'RUB', '15.04.2026'],
-    ['Кирпич 250 мм',  'м2', 1800, 'RUB', '15.04.2026'],
-    ['СКЦ 80 мм',      'м2',  900, 'RUB', '15.04.2026'],
-]
-for row in materials:
-    ws1.append(row)
+with open('data/spravochnik.json', 'w', encoding='utf-8') as f:
+    json.dump(spravochnik, f, ensure_ascii=False, indent=2)
+print('OK: data/spravochnik.json создан')
 
-ws1.column_dimensions['A'].width = 25
-ws1.column_dimensions['B'].width = 10
-ws1.column_dimensions['C'].width = 12
-ws1.column_dimensions['D'].width = 10
-ws1.column_dimensions['E'].width = 14
+# ── ВОР ЖК Холодов → vor_kholodov.json ────────────────────────────────────────
+vor = {
+    "meta": {
+        "tender": "ЖК Холодов",
+        "section": "Кладка",
+        "loaded_at": today,
+        "loaded_by": "system"
+    },
+    "items": [
+        {"num": 1, "naimenovanie": "Устройство кирпичных стен 120 мм",                "ed_izm": "м2", "kolvo": 60},
+        {"num": 2, "naimenovanie": "Устройство кирпичных стен 250 мм",                "ed_izm": "м2", "kolvo": 74},
+        {"num": 3, "naimenovanie": "Устройство перегородок из камня СКЦ толщ. 80 мм", "ed_izm": "м2", "kolvo": 1000}
+    ]
+}
 
-wb1.save('data/spravochnik.xlsx')
-print('OK: data/spravochnik.xlsx sozdan')
+with open('data/vor_kholodov.json', 'w', encoding='utf-8') as f:
+    json.dump(vor, f, ensure_ascii=False, indent=2)
+print('OK: data/vor_kholodov.json создан')
 
-# ── ВОР ЖК Холодов — Кладка ───────────────────────────────────────────────────
-wb2 = Workbook()
-ws2 = wb2.active
-ws2.title = 'ВОР Кладка'
+# ── Маппинг → mapping.json (если не существует) ────────────────────────────────
+if not os.path.exists('data/mapping.json'):
+    with open('data/mapping.json', 'w', encoding='utf-8') as f:
+        json.dump({}, f, ensure_ascii=False, indent=2)
+    print('OK: data/mapping.json создан (пустой)')
+else:
+    print('OK: data/mapping.json уже существует, не трогаем')
 
-headers2 = ['№', 'Наименование', 'Ед.изм', 'Кол-во']
-ws2.append(headers2)
-for cell in ws2[1]:
-    cell.font = Font(bold=True, color='FFFFFF')
-    cell.fill = PatternFill(fill_type='solid', fgColor='1a3a2a')
-    cell.alignment = Alignment(horizontal='center')
-
-vor_rows = [
-    [1, 'Устройство кирпичных стен 120 мм',               'м2', 60],
-    [2, 'Устройство кирпичных стен 250 мм',               'м2', 74],
-    [3, 'Устройство перегородок из камня СКЦ толщ. 80 мм','м2', 1000],
-]
-for row in vor_rows:
-    ws2.append(row)
-
-ws2.column_dimensions['A'].width = 6
-ws2.column_dimensions['B'].width = 52
-ws2.column_dimensions['C'].width = 10
-ws2.column_dimensions['D'].width = 10
-
-wb2.save('data/vor_kholodov.xlsx')
-print('OK: data/vor_kholodov.xlsx sozdan')
-
-print('\nGotovo! Mozhno zapuskat: python app.py')
+print('\nGotovo! Zapuskay: python app.py')
